@@ -48,17 +48,13 @@ The CSV file should have the following format:
     Example:
 
     ```
-    1,1,1,2,01-01-2024,12:00:00,10.00,20.00,Medium,Vegetarian,"Tomato, Cheese, Olives","Margherita"
-    2,2,2,1,01-01-2024,12:15:00,12.00,12.00,Large,Meat Lovers,"Tomato, Cheese, Pepperoni, Sausage, Bacon","Meat Feast"
+    1,1,margherita,2,01-01-2024,12:00:00,10.00,20.00,Medium,Vegetarian,"Tomato, Cheese, Olives",Margherita
+    2,2,meat_feast,1,01-01-2024,12:15:00,12.00,12.00,Large,Meat Lovers,"Tomato, Cheese, Pepperoni, Sausage, Bacon",Meat Feast
     ```
 
 ## Output
 
 The program will output the name of the most and least ordered pizzas based on the given commands.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit issues and pull requests.
 
 ## License
 

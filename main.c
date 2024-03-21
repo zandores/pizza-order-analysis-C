@@ -5,7 +5,7 @@
 // CSV reader config
 #define MAX_LINE_LENGTH 1024
 #define MAX_FIELDS 12
-// ##
+//
 
 struct order {
   float pizza_id;
@@ -22,7 +22,7 @@ struct order {
   char pizza_name[50];
 };
 
-void unique_pizzas(
+void unique_pizza_names(
     int size, struct order *orders,
     struct {
       const char *pizza_name;
@@ -51,6 +51,35 @@ void unique_pizzas(
   }
 }
 
+void unique_pizza_days(
+    int size, struct order *orders,
+    struct {
+      const char *date;
+      float total;
+    } pizza_totals[],
+    int *num_unique_days) {
+  *num_unique_days = 0;
+
+  // Loop through the orders to calculate the total sales for each day
+  for (int i = 0; i < size; i++) {
+    int j;
+    // Check if this day already exists in the pizza_totals array
+    for (j = 0; j < *num_unique_days; j++) {
+      if (strcmp(orders[i].order_date, pizza_totals[j].date) == 0) {
+        // If it exists, add the quantity to its total
+        pizza_totals[j].total += orders[i].total_price;
+        break;
+      }
+    }
+    // If the day doesn't exist, add it to the pizza_totals array
+    if (j == *num_unique_days) {
+      pizza_totals[*num_unique_days].date = orders[i].order_date;
+      pizza_totals[*num_unique_days].total = orders[i].total_price;
+      (*num_unique_days)++;
+    }
+  }
+}
+
 // Metrics functions
 void pms(int size, struct order *orders) {
   struct {
@@ -58,7 +87,7 @@ void pms(int size, struct order *orders) {
     float total_quantity;
   } pizza_totals[size]; // Assuming a maximum number of pizzas
   int num_unique_pizzas;
-  unique_pizzas(size, orders, pizza_totals, &num_unique_pizzas);
+  unique_pizza_names(size, orders, pizza_totals, &num_unique_pizzas);
 
   // Find the pizza with the highest total quantity
   float max_quantity = pizza_totals[0].total_quantity;
@@ -79,7 +108,7 @@ void pls(int size, struct order *orders) {
     float total_quantity;
   } pizza_totals[size]; // Assuming a maximum number of pizzas
   int num_unique_pizzas;
-  unique_pizzas(size, orders, pizza_totals, &num_unique_pizzas);
+  unique_pizza_names(size, orders, pizza_totals, &num_unique_pizzas);
 
   // Find the pizza with the minimum total quantity
   float min_quantity = pizza_totals[0].total_quantity;
@@ -94,9 +123,53 @@ void pls(int size, struct order *orders) {
   printf("The least ordered pizza is '%s'.\n", least_ordered_pizza);
 }
 
+void dms(int size, struct order *orders) {
+  struct {
+    const char *date;
+    float total;
+  } pizza_totals[size]; // Assuming a maximum number of pizzas
+  int num_unique_days;
+  unique_pizza_days(size, orders, pizza_totals, &num_unique_days);
+
+  // Find the day with the highest total quantity
+  float max_total = pizza_totals[0].total;
+  const char *most_ordered_date = pizza_totals[0].date;
+  for (int i = 1; i < num_unique_days; i++) {
+    if (pizza_totals[i].total > max_total) {
+      max_total = pizza_totals[i].total;
+      most_ordered_date = pizza_totals[i].date;
+    }
+  }
+
+  printf("The most ordered date is %s with a total of $%.2f.\n",
+         most_ordered_date, max_total);
+}
+
+void dls(int size, struct order *orders) {
+  struct {
+    const char *date;
+    float total;
+  } pizza_totals[size]; // Assuming a maximum number of pizzas
+  int num_unique_days;
+  unique_pizza_days(size, orders, pizza_totals, &num_unique_days);
+
+  // Find the day with the highest total quantity
+  float min_total = pizza_totals[0].total;
+  const char *least_ordered_date = pizza_totals[0].date;
+  for (int i = 1; i < num_unique_days; i++) {
+    if (pizza_totals[i].total < min_total) {
+      min_total = pizza_totals[i].total;
+      least_ordered_date = pizza_totals[i].date;
+    }
+  }
+
+  printf("The least ordered date is %s with a total of $%.2f.\n",
+         least_ordered_date, min_total);
+}
+
 // Define function pointers and their names
-void (*commandsFuncs[])(int, struct order *) = {pms, pls};
-const char *commandsNames[] = {"pms", "pls"};
+void (*commandsFuncs[])(int, struct order *) = {pms, pls, dms, dls};
+const char *commandsNames[] = {"pms", "pls", "dms", "dls"};
 
 void execute_command(const char *command, int size, struct order *orders) {
   for (size_t i = 0; i < sizeof(commandsNames) / sizeof(commandsNames[0]);
@@ -106,13 +179,13 @@ void execute_command(const char *command, int size, struct order *orders) {
       return;
     }
   }
-  printf("Command '%s' not found\n", command);
+  printf("Command '%s' not found.\n", command);
 }
 
 void read_csv(const char *filename, struct order **orders, int *size) {
   FILE *file = fopen(filename, "r");
   if (file == NULL) {
-    printf("Error opening file %s\n", filename);
+    printf("Error opening file %s.\n", filename);
     return;
   }
 
@@ -120,7 +193,7 @@ void read_csv(const char *filename, struct order **orders, int *size) {
 
   // Read the header and discard it
   if (fgets(line, sizeof(line), file) == NULL) {
-    printf("Empty file\n");
+    printf("Empty file.\n");
     fclose(file);
     return;
   }
@@ -147,7 +220,7 @@ void read_csv(const char *filename, struct order **orders, int *size) {
     // Reallocate memory for orders array
     temp_orders = realloc(temp_orders, (count + 1) * sizeof(struct order));
     if (temp_orders == NULL) {
-      printf("Memory allocation failed\n");
+      printf("Memory allocation failed.\n");
       fclose(file);
       return;
     }

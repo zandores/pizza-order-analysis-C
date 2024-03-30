@@ -166,7 +166,7 @@ void pms(int size, HashMap **orders) {
   }
 
   const char *most_ordered_pizza = getHighestValueKey(unique_pizzas);
-  printf("The most ordered pizza is '%s'.\n", most_ordered_pizza);
+  printf("The most ordered pizza is %s.\n", most_ordered_pizza);
 
   freeHashMap(unique_pizzas);
 }
@@ -188,14 +188,58 @@ void pls(int size, HashMap **orders) {
   }
 
   const char *least_ordered_pizza = getLowestValueKey(unique_pizzas);
-  printf("The least ordered pizza is '%s'.\n", least_ordered_pizza);
+  printf("The least ordered pizza is %s.\n", least_ordered_pizza);
 
   freeHashMap(unique_pizzas);
 }
 
-void dms(int size, HashMap **orders) {}
+void dms(int size, HashMap **orders) {
+  HashMap *unique_dates = createHashMap();
 
-void dls(int size, HashMap **orders) {}
+  for (int i = 0; i < size; i++) {
+    float total_price = hashMapGetFloat(orders[i], "total_price");
+    const char *date = hashMapGetString(orders[i], "order_date");
+
+    if (hashMapGetFloat(unique_dates, date) == 0.0f) {
+      hashMapInsert(unique_dates, date, &total_price, FLOAT);
+    } else {
+      float total_price_ptr = hashMapGetFloat(unique_dates, date);
+      total_price_ptr += total_price;
+      hashMapInsert(unique_dates, date, &total_price_ptr, FLOAT);
+    }
+  }
+
+  const char *date_most_sold = getHighestValueKey(unique_dates);
+  float total_price_most_sold = hashMapGetFloat(unique_dates, date_most_sold);
+  printf("The date most sold is %s with a total of $%.2f.\n", date_most_sold,
+         total_price_most_sold);
+
+  freeHashMap(unique_dates);
+}
+
+void dls(int size, HashMap **orders) {
+  HashMap *unique_dates = createHashMap();
+
+  for (int i = 0; i < size; i++) {
+    float total_price = hashMapGetFloat(orders[i], "total_price");
+    const char *date = hashMapGetString(orders[i], "order_date");
+
+    if (hashMapGetFloat(unique_dates, date) == 0.0f) {
+      hashMapInsert(unique_dates, date, &total_price, FLOAT);
+    } else {
+      float total_price_ptr = hashMapGetFloat(unique_dates, date);
+      total_price_ptr += total_price;
+      hashMapInsert(unique_dates, date, &total_price_ptr, FLOAT);
+    }
+  }
+
+  const char *date_least_sold = getLowestValueKey(unique_dates);
+  float total_price_least_sold = hashMapGetFloat(unique_dates, date_least_sold);
+  printf("The date least sold is %s with a total of $%.2f.\n", date_least_sold,
+         total_price_least_sold);
+
+  freeHashMap(unique_dates);
+}
 /***************/
 
 /* Define function pointers and their names */
@@ -203,7 +247,7 @@ void (*commandsFuncs[])(int, HashMap **orders) = {pms, pls, dms, dls};
 const char *commandsNames[] = {"pms", "pls", "dms", "dls"};
 
 void execute_command(const char *command, int size, HashMap **orders) {
-  for (size_t i = 0; i < sizeof(commandsNames) / sizeof(commandsNames[0]);
+  for (size_t i = 0; i < sizeof(commandsNames) / sizeof(commandsNames[0] + 1);
        i++) {
     if (strcmp(command, commandsNames[i]) == 0) {
       commandsFuncs[i](size, orders);
@@ -241,11 +285,11 @@ void read_csv(const char *filename, HashMap ***orders, int *size) {
   while (fgets(line, sizeof(line), file) != NULL) {
     (*orders)[index] = createHashMap(); // Create a new hashmap for each line
 
-    char pizza_name_id[20];
-    char order_date[10];
-    char order_time[8];
-    char pizza_size[10];
-    char pizza_category[20];
+    char pizza_name_id[50];
+    char order_date[12];
+    char order_time[10];
+    char pizza_size[2];
+    char pizza_category[50];
     char pizza_ingredients[100];
     char pizza_name[50];
     float pizza_id, order_id, quantity, unit_price, total_price;
@@ -256,8 +300,7 @@ void read_csv(const char *filename, HashMap ***orders, int *size) {
     }
 
     sscanf(line,
-           "%f,%f,%20[^,],%f,%10[^,],%8[^,],%f,%f, "
-           "%10[^,],%20[^,],\"%100[^\"]\",%50[^\n]",
+           "%f,%f,%[^,],%f,%[^,],%[^,],%f,%f,%[^,],%[^,],\"%[^\"]\",%[^\n]",
            &pizza_id, &order_id, pizza_name_id, &quantity, order_date,
            order_time, &unit_price, &total_price, pizza_size, pizza_category,
            pizza_ingredients, pizza_name);

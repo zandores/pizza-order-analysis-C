@@ -2,176 +2,207 @@
 #include <stdlib.h>
 #include <string.h>
 
-// CSV reader config
-#define MAX_LINE_LENGTH 1024
-#define MAX_FIELDS 12
-//
+/* HASHMAP */
+#define MAX_HASH_SIZE 12
 
-struct order {
-  float pizza_id;
-  float order_id;
-  char pizza_name_id[20];
-  float quantity;
-  char order_date[10];
-  char order_time[8];
-  float unit_price;
-  float total_price;
-  char pizza_size[10];
-  char pizza_category[20];
-  char pizza_ingredients[100];
-  char pizza_name[50];
-};
+typedef enum { STRING, FLOAT } ValueType;
 
-void unique_pizza_names(
-    int size, struct order *orders,
-    struct {
-      const char *pizza_name;
-      float total_quantity;
-    } pizza_totals[],
-    int *num_unique_pizzas) {
-  *num_unique_pizzas = 0;
+typedef struct {
+  char *key;
+  union {
+    char *str_value;
+    float float_value;
+  } value;
+  ValueType type;
+} HashMapEntry;
 
-  // Loop through the orders to calculate the total quantity for each pizza
-  for (int i = 0; i < size; i++) {
-    int j;
-    // Check if this pizza type already exists in the pizza_totals array
-    for (j = 0; j < *num_unique_pizzas; j++) {
-      if (strcmp(orders[i].pizza_name, pizza_totals[j].pizza_name) == 0) {
-        // If it exists, add the quantity to its total
-        pizza_totals[j].total_quantity += orders[i].quantity;
-        break;
-      }
-    }
-    // If the pizza type doesn't exist, add it to the pizza_totals array
-    if (j == *num_unique_pizzas) {
-      pizza_totals[*num_unique_pizzas].pizza_name = orders[i].pizza_name;
-      pizza_totals[*num_unique_pizzas].total_quantity = orders[i].quantity;
-      (*num_unique_pizzas)++;
-    }
+typedef struct {
+  HashMapEntry *entries;
+  int capacity;
+  int size;
+} HashMap;
+
+unsigned long hash(const char *key) {
+  unsigned long hash = 5381;
+  int c;
+
+  while ((c = *key++) != 0) {
+    hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
   }
+
+  return hash;
 }
 
-void unique_pizza_days(
-    int size, struct order *orders,
-    struct {
-      const char *date;
-      float total;
-    } pizza_totals[],
-    int *num_unique_days) {
-  *num_unique_days = 0;
-
-  // Loop through the orders to calculate the total sales for each day
-  for (int i = 0; i < size; i++) {
-    int j;
-    // Check if this day already exists in the pizza_totals array
-    for (j = 0; j < *num_unique_days; j++) {
-      if (strcmp(orders[i].order_date, pizza_totals[j].date) == 0) {
-        // If it exists, add the quantity to its total
-        pizza_totals[j].total += orders[i].total_price;
-        break;
-      }
-    }
-    // If the day doesn't exist, add it to the pizza_totals array
-    if (j == *num_unique_days) {
-      pizza_totals[*num_unique_days].date = orders[i].order_date;
-      pizza_totals[*num_unique_days].total = orders[i].total_price;
-      (*num_unique_days)++;
-    }
-  }
+HashMap *createHashMap() {
+  HashMap *map = malloc(sizeof(HashMap));
+  if (!map)
+    exit(EXIT_FAILURE);
+  map->capacity = MAX_HASH_SIZE;
+  map->size = 0;
+  map->entries = calloc(map->capacity, sizeof(HashMapEntry));
+  if (!map->entries)
+    exit(EXIT_FAILURE);
+  return map;
 }
 
-// Metrics functions
-void pms(int size, struct order *orders) {
-  struct {
-    const char *pizza_name;
-    float total_quantity;
-  } pizza_totals[size]; // Assuming a maximum number of pizzas
-  int num_unique_pizzas;
-  unique_pizza_names(size, orders, pizza_totals, &num_unique_pizzas);
+void resizeHashMap(HashMap *map) {
+  int new_capacity = map->capacity * 2;
+  HashMapEntry *new_entries =
+      realloc(map->entries, new_capacity * sizeof(HashMapEntry));
+  if (!new_entries)
+    exit(EXIT_FAILURE);
 
-  // Find the pizza with the highest total quantity
-  float max_quantity = pizza_totals[0].total_quantity;
-  const char *most_ordered_pizza = pizza_totals[0].pizza_name;
-  for (int i = 1; i < num_unique_pizzas; i++) {
-    if (pizza_totals[i].total_quantity > max_quantity) {
-      max_quantity = pizza_totals[i].total_quantity;
-      most_ordered_pizza = pizza_totals[i].pizza_name;
+  // Initialize newly allocated memory
+  memset(new_entries + map->capacity, 0, map->capacity * sizeof(HashMapEntry));
+
+  map->entries = new_entries;
+  map->capacity = new_capacity;
+}
+
+void hashMapInsert(HashMap *map, const char *key, const void *value,
+                   ValueType type) {
+  if (map->size >= map->capacity)
+    resizeHashMap(map);
+  unsigned long index = hash(key) % map->capacity;
+  while (map->entries[index].key != NULL &&
+         strcmp(map->entries[index].key, key) != 0) {
+    index = (index + 1) % map->capacity;
+  }
+  map->entries[index].key = strdup(key);
+  if (type == STRING)
+    map->entries[index].value.str_value = strdup(value);
+  else
+    map->entries[index].value.float_value = *(float *)value;
+  map->entries[index].type = type;
+  map->size++;
+}
+
+const char *hashMapGetString(HashMap *map, const char *key) {
+  unsigned long index = hash(key) % map->capacity;
+  while (map->entries[index].key != NULL) {
+    if (strcmp(map->entries[index].key, key) == 0 &&
+        map->entries[index].type == STRING) {
+      return map->entries[index].value.str_value;
+    }
+    index = (index + 1) % map->capacity;
+  }
+  return NULL;
+}
+
+float hashMapGetFloat(HashMap *map, const char *key) {
+  unsigned long index = hash(key) % map->capacity;
+  while (map->entries[index].key != NULL) {
+    if (strcmp(map->entries[index].key, key) == 0 &&
+        map->entries[index].type == FLOAT) {
+      return map->entries[index].value.float_value;
+    }
+    index = (index + 1) % map->capacity;
+  }
+  return 0.0f;
+}
+
+const char *getHighestValueKey(HashMap *map) {
+  float highest_value = 0.0f; // Assuming all values are positive
+  const char *highest_value_key = NULL;
+
+  for (int i = 0; i < map->capacity; i++) {
+    if (map->entries[i].key != NULL && map->entries[i].type == FLOAT) {
+      float current_value = map->entries[i].value.float_value;
+      if (current_value > highest_value) {
+        highest_value = current_value;
+        highest_value_key = map->entries[i].key;
+      }
     }
   }
 
+  return highest_value_key;
+}
+
+const char *getLowestValueKey(HashMap *map) {
+  float lowest_value;
+  const char *lowest_value_key = NULL;
+
+  for (int i = 1; i < map->capacity; i++) {
+    if (map->entries[i].key != NULL && map->entries[i].type == FLOAT) {
+      float current_value = map->entries[i].value.float_value;
+      if (lowest_value_key == NULL || current_value < lowest_value) {
+        lowest_value = current_value;
+        lowest_value_key = map->entries[i].key;
+      }
+    }
+  }
+
+  return lowest_value_key;
+}
+
+void freeHashMap(HashMap *map) {
+  for (int i = 0; i < map->capacity; i++) {
+    if (map->entries[i].key != NULL) {
+      free(map->entries[i].key);
+      if (map->entries[i].type == STRING)
+        free(map->entries[i].value.str_value);
+    }
+  }
+  free(map->entries);
+  free(map);
+}
+/***************/
+
+/* METRIC FUNCTIONS */
+void pms(int size, HashMap **orders) {
+  HashMap *unique_pizzas = createHashMap();
+
+  for (int i = 0; i < size; i++) {
+    float quantity = hashMapGetFloat(orders[i], "quantity");
+    const char *pizza_name = hashMapGetString(orders[i], "pizza_name");
+
+    if (hashMapGetFloat(unique_pizzas, pizza_name) == 0.0f) {
+      hashMapInsert(unique_pizzas, pizza_name, &quantity, FLOAT);
+    } else {
+      float quantity_ptr = hashMapGetFloat(unique_pizzas, pizza_name);
+      quantity_ptr += quantity;
+      hashMapInsert(unique_pizzas, pizza_name, &quantity_ptr, FLOAT);
+    }
+  }
+
+  const char *most_ordered_pizza = getHighestValueKey(unique_pizzas);
   printf("The most ordered pizza is '%s'.\n", most_ordered_pizza);
+
+  freeHashMap(unique_pizzas);
 }
 
-void pls(int size, struct order *orders) {
-  struct {
-    const char *pizza_name;
-    float total_quantity;
-  } pizza_totals[size]; // Assuming a maximum number of pizzas
-  int num_unique_pizzas;
-  unique_pizza_names(size, orders, pizza_totals, &num_unique_pizzas);
+void pls(int size, HashMap **orders) {
+  HashMap *unique_pizzas = createHashMap();
 
-  // Find the pizza with the minimum total quantity
-  float min_quantity = pizza_totals[0].total_quantity;
-  const char *least_ordered_pizza = pizza_totals[0].pizza_name;
-  for (int i = 1; i < num_unique_pizzas; i++) {
-    if (pizza_totals[i].total_quantity < min_quantity) {
-      min_quantity = pizza_totals[i].total_quantity;
-      least_ordered_pizza = pizza_totals[i].pizza_name;
+  for (int i = 0; i < size; i++) {
+    float quantity = hashMapGetFloat(orders[i], "quantity");
+    const char *pizza_name = hashMapGetString(orders[i], "pizza_name");
+
+    if (hashMapGetFloat(unique_pizzas, pizza_name) == 0.0f) {
+      hashMapInsert(unique_pizzas, pizza_name, &quantity, FLOAT);
+    } else {
+      float quantity_ptr = hashMapGetFloat(unique_pizzas, pizza_name);
+      quantity_ptr += quantity;
+      hashMapInsert(unique_pizzas, pizza_name, &quantity_ptr, FLOAT);
     }
   }
 
+  const char *least_ordered_pizza = getLowestValueKey(unique_pizzas);
   printf("The least ordered pizza is '%s'.\n", least_ordered_pizza);
+
+  freeHashMap(unique_pizzas);
 }
 
-void dms(int size, struct order *orders) {
-  struct {
-    const char *date;
-    float total;
-  } pizza_totals[size]; // Assuming a maximum number of pizzas
-  int num_unique_days;
-  unique_pizza_days(size, orders, pizza_totals, &num_unique_days);
+void dms(int size, HashMap **orders) {}
 
-  // Find the day with the highest total quantity
-  float max_total = pizza_totals[0].total;
-  const char *most_ordered_date = pizza_totals[0].date;
-  for (int i = 1; i < num_unique_days; i++) {
-    if (pizza_totals[i].total > max_total) {
-      max_total = pizza_totals[i].total;
-      most_ordered_date = pizza_totals[i].date;
-    }
-  }
+void dls(int size, HashMap **orders) {}
+/***************/
 
-  printf("The most ordered date is %s with a total of $%.2f.\n",
-         most_ordered_date, max_total);
-}
-
-void dls(int size, struct order *orders) {
-  struct {
-    const char *date;
-    float total;
-  } pizza_totals[size]; // Assuming a maximum number of pizzas
-  int num_unique_days;
-  unique_pizza_days(size, orders, pizza_totals, &num_unique_days);
-
-  // Find the day with the highest total quantity
-  float min_total = pizza_totals[0].total;
-  const char *least_ordered_date = pizza_totals[0].date;
-  for (int i = 1; i < num_unique_days; i++) {
-    if (pizza_totals[i].total < min_total) {
-      min_total = pizza_totals[i].total;
-      least_ordered_date = pizza_totals[i].date;
-    }
-  }
-
-  printf("The least ordered date is %s with a total of $%.2f.\n",
-         least_ordered_date, min_total);
-}
-
-// Define function pointers and their names
-void (*commandsFuncs[])(int, struct order *) = {pms, pls, dms, dls};
+/* Define function pointers and their names */
+void (*commandsFuncs[])(int, HashMap **orders) = {pms, pls, dms, dls};
 const char *commandsNames[] = {"pms", "pls", "dms", "dls"};
 
-void execute_command(const char *command, int size, struct order *orders) {
+void execute_command(const char *command, int size, HashMap **orders) {
   for (size_t i = 0; i < sizeof(commandsNames) / sizeof(commandsNames[0]);
        i++) {
     if (strcmp(command, commandsNames[i]) == 0) {
@@ -181,15 +212,17 @@ void execute_command(const char *command, int size, struct order *orders) {
   }
   printf("Command '%s' not found.\n", command);
 }
+/***************/
 
-void read_csv(const char *filename, struct order **orders, int *size) {
+/* CSV FILE READER */
+void read_csv(const char *filename, HashMap ***orders, int *size) {
   FILE *file = fopen(filename, "r");
   if (file == NULL) {
     printf("Error opening file %s.\n", filename);
     return;
   }
 
-  char line[MAX_LINE_LENGTH];
+  char line[1024];
 
   // Read the header and discard it
   if (fgets(line, sizeof(line), file) == NULL) {
@@ -198,11 +231,24 @@ void read_csv(const char *filename, struct order **orders, int *size) {
     return;
   }
 
-  struct order *temp_orders = NULL;
-  int count = 0;
+  *orders =
+      malloc(sizeof(HashMap *) *
+             MAX_HASH_SIZE); // Allocate memory for array of hashmap pointers
+  if (!(*orders))
+    exit(EXIT_FAILURE);
 
+  int index = 0;
   while (fgets(line, sizeof(line), file) != NULL) {
-    struct order ord;
+    (*orders)[index] = createHashMap(); // Create a new hashmap for each line
+
+    char pizza_name_id[20];
+    char order_date[10];
+    char order_time[8];
+    char pizza_size[10];
+    char pizza_category[20];
+    char pizza_ingredients[100];
+    char pizza_name[50];
+    float pizza_id, order_id, quantity, unit_price, total_price;
 
     size_t len = strlen(line);
     if (len > 0 && line[len - 1] == '\n') {
@@ -212,29 +258,32 @@ void read_csv(const char *filename, struct order **orders, int *size) {
     sscanf(line,
            "%f,%f,%20[^,],%f,%10[^,],%8[^,],%f,%f, "
            "%10[^,],%20[^,],\"%100[^\"]\",%50[^\n]",
-           &ord.pizza_id, &ord.order_id, ord.pizza_name_id, &ord.quantity,
-           ord.order_date, ord.order_time, &ord.unit_price, &ord.total_price,
-           ord.pizza_size, ord.pizza_category, ord.pizza_ingredients,
-           ord.pizza_name);
+           &pizza_id, &order_id, pizza_name_id, &quantity, order_date,
+           order_time, &unit_price, &total_price, pizza_size, pizza_category,
+           pizza_ingredients, pizza_name);
 
-    // Reallocate memory for orders array
-    temp_orders = realloc(temp_orders, (count + 1) * sizeof(struct order));
-    if (temp_orders == NULL) {
-      printf("Memory allocation failed.\n");
-      fclose(file);
-      return;
-    }
+    hashMapInsert((*orders)[index], "pizza_id", &pizza_id, FLOAT);
+    hashMapInsert((*orders)[index], "order_id", &order_id, FLOAT);
+    hashMapInsert((*orders)[index], "pizza_name_id", pizza_name_id, STRING);
+    hashMapInsert((*orders)[index], "quantity", &quantity, FLOAT);
+    hashMapInsert((*orders)[index], "order_date", order_date, STRING);
+    hashMapInsert((*orders)[index], "order_time", order_time, STRING);
+    hashMapInsert((*orders)[index], "unit_price", &unit_price, FLOAT);
+    hashMapInsert((*orders)[index], "total_price", &total_price, FLOAT);
+    hashMapInsert((*orders)[index], "pizza_size", pizza_size, STRING);
+    hashMapInsert((*orders)[index], "pizza_category", pizza_category, STRING);
+    hashMapInsert((*orders)[index], "pizza_ingredients", pizza_ingredients,
+                  STRING);
+    hashMapInsert((*orders)[index], "pizza_name", pizza_name, STRING);
 
-    // Copy the current order to the orders array
-    temp_orders[count] = ord;
-    count++;
+    index++;
   }
 
-  *orders = temp_orders;
-  *size = count;
+  *size = index; // Set the size to the number of hashmap pointers created
 
   fclose(file);
 }
+/***************/
 
 int main(int argc, char **argv) {
   if (argc < 2) {
@@ -243,7 +292,7 @@ int main(int argc, char **argv) {
   }
 
   const char *fileName = argv[1];
-  struct order *orders;
+  HashMap **orders;
   int size;
 
   read_csv(fileName, &orders, &size);
@@ -258,7 +307,10 @@ int main(int argc, char **argv) {
     execute_command(argv[arg], size, orders);
   }
 
-  // Free dynamically allocated memory
+  // Free memory
+  for (int i = 0; i < size; i++) {
+    freeHashMap(orders[i]);
+  }
   free(orders);
 
   return 0;

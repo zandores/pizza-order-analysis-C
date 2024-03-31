@@ -123,7 +123,7 @@ const char *getLowestValueKey(HashMap *map) {
   float lowest_value;
   const char *lowest_value_key = NULL;
 
-  for (int i = 1; i < map->capacity; i++) {
+  for (int i = 0; i < map->capacity; i++) {
     if (map->entries[i].key != NULL && map->entries[i].type == FLOAT) {
       float current_value = map->entries[i].value.float_value;
       if (lowest_value_key == NULL || current_value < lowest_value) {
@@ -134,6 +134,26 @@ const char *getLowestValueKey(HashMap *map) {
   }
 
   return lowest_value_key;
+}
+
+const char *getAverageValue(HashMap *map) {
+  float all_values = 0.0f;
+  int size = 0;
+
+  for (int i = 0; i < map->capacity; i++) {
+    if (map->entries[i].key != NULL && map->entries[i].type == FLOAT) {
+      all_values += map->entries[i].value.float_value;
+      size += 1;
+    }
+  }
+
+  const char *mean;
+
+  char float_to_str[20];
+  sprintf(float_to_str, "%0.1f", all_values / size);
+  mean = float_to_str;
+
+  return mean;
 }
 
 void freeHashMap(HashMap *map) {
@@ -157,15 +177,21 @@ void processOrderFilter(int size, HashMap **orders, const char *message,
 
   for (int i = 0; i < size; i++) {
     float value = hashMapGetFloat(orders[i], key);
-    const char *filter_key = hashMapGetString(orders[i], filter);
 
-    if (hashMapGetFloat(unique, filter_key) == 0.0f) {
-      hashMapInsert(unique, filter_key, &value, FLOAT);
+    const char *filter_key;
+    if (strcmp(filter, "order_id") != 0) {
+      filter_key = hashMapGetString(orders[i], filter);
     } else {
-      float new_value = hashMapGetFloat(unique, filter_key);
-      new_value += value;
-      hashMapInsert(unique, filter_key, &new_value, FLOAT);
+      char float_to_str[20];
+      sprintf(float_to_str, "order%0.0f", hashMapGetFloat(orders[i], filter));
+      filter_key = float_to_str;
     }
+
+    if (hashMapGetFloat(unique, filter_key) != 0.0f) {
+      value += hashMapGetFloat(unique, filter_key);
+    }
+
+    hashMapInsert(unique, filter_key, &value, FLOAT);
   }
 
   const char *extreme_value;
@@ -173,6 +199,8 @@ void processOrderFilter(int size, HashMap **orders, const char *message,
     extreme_value = getHighestValueKey(unique);
   } else if (strcmp(most_or_least, "least") == 0) {
     extreme_value = getLowestValueKey(unique);
+  } else if (strcmp(most_or_least, "average") == 0) {
+    extreme_value = getAverageValue(unique);
   }
 
   if (extra_ptr == false) {
@@ -200,14 +228,14 @@ void pls(int size, HashMap **orders) {
 void dms(int size, HashMap **orders) {
   processOrderFilter(
       size, orders,
-      "The date with the most revenue is  %s with a total of $%.2f.", "most",
+      "The date with the most revenue is %s with a total of $%.2f.", "most",
       "order_date", "total_price", true);
 }
 
 void dls(int size, HashMap **orders) {
   processOrderFilter(
       size, orders,
-      "The date with the least revenue is  %s with a total of $%.2f.", "least",
+      "The date with the least revenue is %s with a total of $%.2f.", "least",
       "order_date", "total_price", true);
 }
 
@@ -224,12 +252,19 @@ void dlsp(int size, HashMap **orders) {
       "least", "order_date", "quantity", true);
 }
 
-void apo(int size, HashMap **orders) {} // Average pizzas per order
-void apd(int size, HashMap **orders) {} // Average pizzas per day
+void apo(int size, HashMap **orders) {
+  processOrderFilter(size, orders,
+                     "The average ordered pizzas per order is %s.", "average",
+                     "order_id", "quantity", false);
+}
+void apd(int size, HashMap **orders) {
+  processOrderFilter(size, orders, "The average ordered pizzas per day is %s.",
+                     "average", "order_date", "quantity", false);
+}
 
 void ims(int size, HashMap **orders) {} // Most ordered ingredient
 void hp(int size, HashMap **orders) {
-  processOrderFilter(size, orders, "The pizza category most ordered is %s.",
+  processOrderFilter(size, orders, "The most ordered pizza category is %s.",
                      "most", "pizza_category", "quantity", false);
 }
 /***************/

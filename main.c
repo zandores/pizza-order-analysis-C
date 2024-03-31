@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -149,7 +150,47 @@ void freeHashMap(HashMap *map) {
 /***************/
 
 /* METRIC FUNCTIONS */
+void processOrderFilter(int size, HashMap **orders, const char *message,
+                        const char *most_or_least, const char *filter,
+                        const char *key, bool extra_ptr) {
+  HashMap *unique = createHashMap();
+
+  for (int i = 0; i < size; i++) {
+    float value = hashMapGetFloat(orders[i], key);
+    const char *filter_key = hashMapGetString(orders[i], filter);
+
+    if (hashMapGetFloat(unique, filter_key) == 0.0f) {
+      hashMapInsert(unique, filter_key, &value, FLOAT);
+    } else {
+      float new_value = hashMapGetFloat(unique, filter_key);
+      new_value += value;
+      hashMapInsert(unique, filter_key, &new_value, FLOAT);
+    }
+  }
+
+  const char *extreme_value;
+  if (strcmp(most_or_least, "most") == 0) {
+    extreme_value = getHighestValueKey(unique);
+  } else if (strcmp(most_or_least, "least") == 0) {
+    extreme_value = getLowestValueKey(unique);
+  }
+
+  if (extra_ptr == NULL) {
+    printf(message, extreme_value);
+  } else {
+    float extra_val = hashMapGetFloat(unique, extreme_value);
+    printf(message, extreme_value, extra_val);
+  }
+
+  printf("\n");
+
+  freeHashMap(unique);
+}
+
 void pms(int size, HashMap **orders) {
+  processOrderFilter(size, orders, "The most ordered pizza is %s.", "most",
+                     "pizza_name", "quantity", NULL);
+  /*
   HashMap *unique_pizzas = createHashMap();
 
   for (int i = 0; i < size; i++) {
@@ -169,9 +210,13 @@ void pms(int size, HashMap **orders) {
   printf("The most ordered pizza is %s.\n", most_ordered_pizza);
 
   freeHashMap(unique_pizzas);
+  */
 }
 
 void pls(int size, HashMap **orders) {
+  processOrderFilter(size, orders, "The least ordered pizza is %s.", "least",
+                     "pizza_name", "quantity", NULL);
+  /*
   HashMap *unique_pizzas = createHashMap();
 
   for (int i = 0; i < size; i++) {
@@ -191,9 +236,14 @@ void pls(int size, HashMap **orders) {
   printf("The least ordered pizza is %s.\n", least_ordered_pizza);
 
   freeHashMap(unique_pizzas);
+  */
 }
 
 void dms(int size, HashMap **orders) {
+  processOrderFilter(size, orders,
+                     "The most sold date is %s with a total of $%.2f.", "most",
+                     "order_date", "total_price", true);
+  /*
   HashMap *unique_dates = createHashMap();
 
   for (int i = 0; i < size; i++) {
@@ -211,13 +261,18 @@ void dms(int size, HashMap **orders) {
 
   const char *date_most_sold = getHighestValueKey(unique_dates);
   float total_price_most_sold = hashMapGetFloat(unique_dates, date_most_sold);
-  printf("The date most sold is %s with a total of $%.2f.\n", date_most_sold,
+  printf("The most sold date is %s with a total of $%.2f.\n", date_most_sold,
          total_price_most_sold);
 
   freeHashMap(unique_dates);
+  */
 }
 
 void dls(int size, HashMap **orders) {
+  processOrderFilter(size, orders,
+                     "The least sold date is %s with a total of $%.2f.",
+                     "least", "order_date", "total_price", true);
+  /*
   HashMap *unique_dates = createHashMap();
 
   for (int i = 0; i < size; i++) {
@@ -235,19 +290,31 @@ void dls(int size, HashMap **orders) {
 
   const char *date_least_sold = getLowestValueKey(unique_dates);
   float total_price_least_sold = hashMapGetFloat(unique_dates, date_least_sold);
-  printf("The date least sold is %s with a total of $%.2f.\n", date_least_sold,
+  printf("The least sold date is %s with a total of $%.2f.\n", date_least_sold,
          total_price_least_sold);
 
   freeHashMap(unique_dates);
+  */
 }
+
+void dmsp(int size, HashMap **orders) {}
+void dlsp(int size, HashMap **orders) {}
+
+void apo(int size, HashMap **orders) {}
+void apd(int size, HashMap **orders) {}
+
+void ims(int size, HashMap **orders) {}
+void hp(int size, HashMap **orders) {}
 /***************/
 
 /* Define function pointers and their names */
-void (*commandsFuncs[])(int, HashMap **orders) = {pms, pls, dms, dls};
-const char *commandsNames[] = {"pms", "pls", "dms", "dls"};
+void (*commandsFuncs[])(int, HashMap **orders) = {pms,  pls, dms, dls, dmsp,
+                                                  dlsp, apo, apd, ims, hp};
+const char *commandsNames[] = {"pms",  "pls", "dms", "dls", "dmsp",
+                               "dlsp", "apo", "apd", "ims", "hp"};
 
 void execute_command(const char *command, int size, HashMap **orders) {
-  for (size_t i = 0; i < sizeof(commandsNames) / sizeof(commandsNames[0] + 1);
+  for (size_t i = 0; i < sizeof(commandsNames) / sizeof(commandsNames[0]) + 1;
        i++) {
     if (strcmp(command, commandsNames[i]) == 0) {
       commandsFuncs[i](size, orders);

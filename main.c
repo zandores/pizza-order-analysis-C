@@ -28,7 +28,7 @@ unsigned long hash(const char *key) {
   int c;
 
   while ((c = *key++) != 0) {
-    hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+    hash = ((hash << 5) + hash) + c;
   }
 
   return hash;

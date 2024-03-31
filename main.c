@@ -183,7 +183,7 @@ void processOrderFilter(int size, HashMap **orders, const char *message,
       filter_key = hashMapGetString(orders[i], filter);
     } else {
       char float_to_str[20];
-      sprintf(float_to_str, "order%0.0f", hashMapGetFloat(orders[i], filter));
+      sprintf(float_to_str, "%0.0f", hashMapGetFloat(orders[i], filter));
       filter_key = float_to_str;
     }
 
@@ -262,7 +262,35 @@ void apd(int size, HashMap **orders) {
                      "average", "order_date", "quantity", false);
 }
 
-void ims(int size, HashMap **orders) {} // Most ordered ingredient
+void ims(int size, HashMap **orders) {
+  HashMap *unique = createHashMap();
+
+  for (int i = 0; i < size; i++) {
+    float quantity = hashMapGetFloat(orders[i], "quantity");
+    char *token =
+        strtok(strdup(hashMapGetString(orders[i], "pizza_ingredients")), ",");
+
+    while (token != NULL) {
+      // Trim leading spaces
+      while (*token == ' ')
+        token++;
+
+      float amount = quantity;
+      if (hashMapGetFloat(unique, token) != 0.0f) {
+        amount += hashMapGetFloat(unique, token);
+      }
+
+      hashMapInsert(unique, token, &amount, FLOAT);
+
+      token = strtok(NULL, ",");
+    }
+  }
+
+  const char *most_ordered_ingredient = getHighestValueKey(unique);
+  printf("The most ordered ingredient is %s.\n", most_ordered_ingredient);
+
+  freeHashMap(unique);
+}
 void hp(int size, HashMap **orders) {
   processOrderFilter(size, orders, "The most ordered pizza category is %s.",
                      "most", "pizza_category", "quantity", false);

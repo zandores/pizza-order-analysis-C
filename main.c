@@ -175,7 +175,7 @@ void processOrderFilter(int size, HashMap **orders, const char *message,
     extreme_value = getLowestValueKey(unique);
   }
 
-  if (extra_ptr == NULL) {
+  if (extra_ptr == false) {
     printf(message, extreme_value);
   } else {
     float extra_val = hashMapGetFloat(unique, extreme_value);
@@ -189,122 +189,49 @@ void processOrderFilter(int size, HashMap **orders, const char *message,
 
 void pms(int size, HashMap **orders) {
   processOrderFilter(size, orders, "The most ordered pizza is %s.", "most",
-                     "pizza_name", "quantity", NULL);
-  /*
-  HashMap *unique_pizzas = createHashMap();
-
-  for (int i = 0; i < size; i++) {
-    float quantity = hashMapGetFloat(orders[i], "quantity");
-    const char *pizza_name = hashMapGetString(orders[i], "pizza_name");
-
-    if (hashMapGetFloat(unique_pizzas, pizza_name) == 0.0f) {
-      hashMapInsert(unique_pizzas, pizza_name, &quantity, FLOAT);
-    } else {
-      float quantity_ptr = hashMapGetFloat(unique_pizzas, pizza_name);
-      quantity_ptr += quantity;
-      hashMapInsert(unique_pizzas, pizza_name, &quantity_ptr, FLOAT);
-    }
-  }
-
-  const char *most_ordered_pizza = getHighestValueKey(unique_pizzas);
-  printf("The most ordered pizza is %s.\n", most_ordered_pizza);
-
-  freeHashMap(unique_pizzas);
-  */
+                     "pizza_name", "quantity", false);
 }
 
 void pls(int size, HashMap **orders) {
   processOrderFilter(size, orders, "The least ordered pizza is %s.", "least",
-                     "pizza_name", "quantity", NULL);
-  /*
-  HashMap *unique_pizzas = createHashMap();
-
-  for (int i = 0; i < size; i++) {
-    float quantity = hashMapGetFloat(orders[i], "quantity");
-    const char *pizza_name = hashMapGetString(orders[i], "pizza_name");
-
-    if (hashMapGetFloat(unique_pizzas, pizza_name) == 0.0f) {
-      hashMapInsert(unique_pizzas, pizza_name, &quantity, FLOAT);
-    } else {
-      float quantity_ptr = hashMapGetFloat(unique_pizzas, pizza_name);
-      quantity_ptr += quantity;
-      hashMapInsert(unique_pizzas, pizza_name, &quantity_ptr, FLOAT);
-    }
-  }
-
-  const char *least_ordered_pizza = getLowestValueKey(unique_pizzas);
-  printf("The least ordered pizza is %s.\n", least_ordered_pizza);
-
-  freeHashMap(unique_pizzas);
-  */
+                     "pizza_name", "quantity", false);
 }
 
 void dms(int size, HashMap **orders) {
-  processOrderFilter(size, orders,
-                     "The most sold date is %s with a total of $%.2f.", "most",
-                     "order_date", "total_price", true);
-  /*
-  HashMap *unique_dates = createHashMap();
-
-  for (int i = 0; i < size; i++) {
-    float total_price = hashMapGetFloat(orders[i], "total_price");
-    const char *date = hashMapGetString(orders[i], "order_date");
-
-    if (hashMapGetFloat(unique_dates, date) == 0.0f) {
-      hashMapInsert(unique_dates, date, &total_price, FLOAT);
-    } else {
-      float total_price_ptr = hashMapGetFloat(unique_dates, date);
-      total_price_ptr += total_price;
-      hashMapInsert(unique_dates, date, &total_price_ptr, FLOAT);
-    }
-  }
-
-  const char *date_most_sold = getHighestValueKey(unique_dates);
-  float total_price_most_sold = hashMapGetFloat(unique_dates, date_most_sold);
-  printf("The most sold date is %s with a total of $%.2f.\n", date_most_sold,
-         total_price_most_sold);
-
-  freeHashMap(unique_dates);
-  */
+  processOrderFilter(
+      size, orders,
+      "The date with the most revenue is  %s with a total of $%.2f.", "most",
+      "order_date", "total_price", true);
 }
 
 void dls(int size, HashMap **orders) {
-  processOrderFilter(size, orders,
-                     "The least sold date is %s with a total of $%.2f.",
-                     "least", "order_date", "total_price", true);
-  /*
-  HashMap *unique_dates = createHashMap();
-
-  for (int i = 0; i < size; i++) {
-    float total_price = hashMapGetFloat(orders[i], "total_price");
-    const char *date = hashMapGetString(orders[i], "order_date");
-
-    if (hashMapGetFloat(unique_dates, date) == 0.0f) {
-      hashMapInsert(unique_dates, date, &total_price, FLOAT);
-    } else {
-      float total_price_ptr = hashMapGetFloat(unique_dates, date);
-      total_price_ptr += total_price;
-      hashMapInsert(unique_dates, date, &total_price_ptr, FLOAT);
-    }
-  }
-
-  const char *date_least_sold = getLowestValueKey(unique_dates);
-  float total_price_least_sold = hashMapGetFloat(unique_dates, date_least_sold);
-  printf("The least sold date is %s with a total of $%.2f.\n", date_least_sold,
-         total_price_least_sold);
-
-  freeHashMap(unique_dates);
-  */
+  processOrderFilter(
+      size, orders,
+      "The date with the least revenue is  %s with a total of $%.2f.", "least",
+      "order_date", "total_price", true);
 }
 
-void dmsp(int size, HashMap **orders) {}
-void dlsp(int size, HashMap **orders) {}
+void dmsp(int size, HashMap **orders) {
+  processOrderFilter(
+      size, orders,
+      "The date with the most sold pizzas is %s with a total of %.0f.", "most",
+      "order_date", "quantity", true);
+}
+void dlsp(int size, HashMap **orders) {
+  processOrderFilter(
+      size, orders,
+      "The date with the least sold pizzas is %s with a total of %.0f.",
+      "least", "order_date", "quantity", true);
+}
 
-void apo(int size, HashMap **orders) {}
-void apd(int size, HashMap **orders) {}
+void apo(int size, HashMap **orders) {} // Average pizzas per order
+void apd(int size, HashMap **orders) {} // Average pizzas per day
 
-void ims(int size, HashMap **orders) {}
-void hp(int size, HashMap **orders) {}
+void ims(int size, HashMap **orders) {} // Most ordered ingredient
+void hp(int size, HashMap **orders) {
+  processOrderFilter(size, orders, "The pizza category most ordered is %s.",
+                     "most", "pizza_category", "quantity", false);
+}
 /***************/
 
 /* Define function pointers and their names */
